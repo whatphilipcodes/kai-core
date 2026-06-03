@@ -6,13 +6,17 @@ from src.kai_core.input.video_buffer import VideoBuffer
 from src.kai_core.memory.context import ContextManager
 from src.kai_core.agent.llm_client import LLMAgent
 
+# Dynamically resolve log level from configuration string
+numeric_level = getattr(logging, settings.system.log_level.upper(), logging.INFO)
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+    level=numeric_level, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
 
 def main() -> None:
-    logging.info("Initializing Kai Core System...")
+    logging.info(
+        f"Initializing Kai Core System with log level: {settings.system.log_level.upper()}..."
+    )
 
     audio_buffer = AudioBuffer(
         rate=settings.audio.rate,

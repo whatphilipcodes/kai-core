@@ -1,8 +1,15 @@
 from pydantic import BaseModel
 
 
-class ContextUpdateResponse(BaseModel):
-    transcript_append: str
-    visual_update: str
+class DecodeModalInputResponse(BaseModel):
+    transcript: str
+    vision: str
+
+
+class UpdateContextResponse(BaseModel):
+    new_scene_description: str
     should_answer: bool
-    answer_text: str
+
+
+class GenerateAnswerResponse(BaseModel):
+    answer: str

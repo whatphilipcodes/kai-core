@@ -4,7 +4,8 @@ from pydantic_settings import BaseSettings
 
 class SystemConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
-    tick_interval: float = 3.0
+    tick_interval: float = 3.0  # Time in seconds between model queries
+    log_level: str = "INFO"  # Choose between INFO, WARNING, ERROR, DEBUG
 
 
 class LLMConfig(BaseModel):
@@ -24,7 +25,7 @@ class AudioConfig(BaseModel):
 class VideoConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
     camera_index: int = 0
-    fps: int = 10
+    fps: int = 15
 
 
 class MemoryConfig(BaseModel):

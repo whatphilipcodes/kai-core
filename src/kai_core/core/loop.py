@@ -28,12 +28,10 @@ class MainLoop:
         )
 
         while True:
-            # Wait for buffers to accumulate data before processing
             time.sleep(self.tick_interval)
+            loop_start = time.time()
 
-            # loop_start = time.time()
-
-            # 1. Extract Media
+            # 1. Extract Media Chunks from Buffers
             audio_data = self.audio_buffer.get_and_clear_chunk()
             video_filepath = self.video_buffer.get_and_clear_chunk()
 
@@ -42,21 +40,60 @@ class MainLoop:
             )
             video_uri = encode_video_file(video_filepath)
 
-            # 2. Retrieve Context
+            # 2. Step 1: Decode Multimodal Modalities
+            transcript = ""
+            vision = ""
+            if audio_uri or video_uri:
+                logging.info("Executing Step 1: Decoding input buffers...")
+                decode_res = self.agent.decode_inputs(audio_uri, video_uri)
+                if decode_res:
+                    transcript = decode_res.transcript
+                    vision = decode_res.vision
+
+                    logging.info(
+                        f"\n--- [State: Decoding] ---\n"
+                        f"Transcript : {transcript}\n"
+                        f"Vision     : {vision}\n"
+                        f"-------------------------"
+                    )
+
+            if transcript.strip():
+                self.context_manager.append_user_transcript(transcript)
+
+            # 3. Step 2: Update Application Scene Description History
             current_context = self.context_manager.get_formatted_context()
+            logging.info("Executing Step 2: Running context update compilation...")
+            context_res = self.agent.update_context(current_context, transcript, vision)
 
-            # 3. Query LLM
-            logging.info("Querying LLM with current context and multimodal chunks...")
-            response = self.agent.query(current_context, audio_uri, video_uri)
-
-            if response:
-                # 4. Update Context & Output
-                self.context_manager.update(
-                    response.transcript_append, response.visual_update
+            if context_res:
+                self.context_manager.set_scene_description(
+                    context_res.new_scene_description
                 )
 
-                print(f"\n[context]: {self.context_manager.get_formatted_context()}\n")
+                logging.info(
+                    f"\n--- [State: Context] ---\n"
+                    f"Scene          : {context_res.new_scene_description}\n"
+                    f"Should Answer  : {context_res.should_answer}\n"
+                    f"Dialogue       :\n{self.context_manager.get_dialogue_string()}\n"
+                    f"------------------------"
+                )
 
-                if response.should_answer and response.answer_text:
-                    print(f"\n[k.ai]: {response.answer_text}\n")
-                    self.context_manager.append_ai_response(response.answer_text)
+                # 4. Step 3: Conditional Evaluation Loop for Agent Responses
+                if context_res.should_answer:
+                    logging.info(
+                        "Executing Step 3: Assertion positive. Generating conversational block..."
+                    )
+
+                    scene_desc = self.context_manager.scene_description
+                    dialogue = self.context_manager.get_dialogue_string()
+
+                    answer_res = self.agent.generate_answer(scene_desc, dialogue)
+
+                    if answer_res and answer_res.answer:
+                        print(f"\n[AI Agent]: {answer_res.answer}\n")
+                        self.context_manager.append_ai_response(answer_res.answer)
+
+            elapsed = time.time() - loop_start
+            logging.debug(
+                f"Tick pipeline execution completed in {elapsed:.4f} seconds."
+            )
