@@ -24,7 +24,7 @@ REQUIRED_SILENCE_CHUNKS = int((FS / CHUNK_SIZE) * T_SILENCE)
 MAX_CHUNKS = int((FS / CHUNK_SIZE) * T_MAX)
 PRE_RECORD_CHUNKS = int((FS / CHUNK_SIZE) * T_PRE_RECORD)
 
-MODEL_ID = "google/gemma-4-E4B-it"
+MODEL_ID = "google/gemma-4-12B-it-qat-w4a16-ct"
 client = OpenAI(base_url="http://localhost:30000/v1", api_key="EMPTY")
 
 # Persistent Conversation History

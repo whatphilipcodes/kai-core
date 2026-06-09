@@ -60,8 +60,8 @@ def encode_file_to_base64(file_path: str, mime_type: str) -> str:
 
 def main():
     # Configuration
-    model_id = "google/gemma-4-E4B-it"
-    input_video_path = "assets/vid/03.mp4"
+    model_id = "google/gemma-4-12B-it-qat-w4a16-ct"
+    input_video_path = "assets/vid/01.mp4"
     endpoint_url = "http://localhost:30000/v1/chat/completions"
 
     # Temporary file paths
