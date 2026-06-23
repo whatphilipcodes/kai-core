@@ -1,57 +1,76 @@
 import time
-import sys
+import socket
+from typing import Optional
 from pydantic import ValidationError
 
 from src.kai_core.config import settings
 from src.kai_core.io.sender import Sender
 from src.kai_core.io.receiver import Receiver
-from src.kai_core.utils.logger import get_logger
+from src.kai_core.utils.logger import get_logger, setup_logging
 from src.kai_core.schemata.ipc import DataReceive
 
+setup_logging()
 logger = get_logger(__name__)
 
-def callback_test(item: DataReceive) -> None:
-    print(f"\n[RECEIVER] Payload received: {item.model_dump()}\n> ", end="")
+NODE_NAME = socket.gethostname()
+
+sender_instance: Optional[Sender] = None
+
+def handle_pipeline_message(item: DataReceive) -> None:
+    """Processes messages passing through the pipeline stage."""
+    global sender_instance
+    
+    msg_text = item.message
+    
+    marker = f"|Origin:{NODE_NAME}"
+    if marker in msg_text:
+        clean_msg = msg_text.split(marker)[0]
+        print(f"\n[LOOP COMPLETE] Message successfully routed back home: '{clean_msg}'\n> ", end="")
+        return
+
+    print("\n[TRANSIT] Processing message from upstream node. Forwarding downstream...\n> ", end="")
+    if sender_instance:
+        sender_instance.send(item)
 
 def main() -> None:
-    logger.info(
-        f"Initializing Kai Core System with log level: {settings.system.log_level}."
-    )
+    global sender_instance
+    
+    logger.info(f"Starting Node [{NODE_NAME}] log level: {settings.system.log_level}")
 
     receiver = Receiver()
-    receiver.register_callback(callback_test)
+    receiver.register_callback(handle_pipeline_message)
     receiver.start()
 
-    sender = Sender()
-    sender.start()
+    sender_instance = Sender()
+    sender_instance.start()
 
-    time.sleep(0.1)
+    time.sleep(0.5)
 
-    print("\n--- ZMQ Interactive Test ---")
-    print("Type a message to send.\n")
+    print(f"\n--- Pipeline Node: {NODE_NAME} Running ---")
+    print("Type a message to inject into the loop.\n")
 
     try:
         while True:
             user_input = input("> ")
-                
             if not user_input.strip():
                 continue
-
+            tracked_text = f"{user_input} |Origin:{NODE_NAME}"
+            
             try:
-                payload = DataReceive(message=user_input)
-                sender.send(payload)
-                
+                payload = DataReceive(message=tracked_text)
+                if sender_instance:
+                    sender_instance.send(payload)
+                    logger.info("Message injected into pipeline loop.")
             except ValidationError as e:
-                logger.error(f"Input does not match DataReceive schema: {e}")
-            except Exception as e:
-                logger.error(f"Failed to send message: {e}")
+                logger.error(f"Payload validation constraint violation: {e}")
 
     except KeyboardInterrupt:
-        print("\nProcess interrupted by user.")
+        print("\nNode execution interrupted manually.")
     finally:
-        sender.stop()
         receiver.stop()
-        logger.info("System shutdown complete.")
+        if sender_instance:
+            sender_instance.stop()
+        logger.info("Node cleanup finalized.")
 
 if __name__ == "__main__":
     main()

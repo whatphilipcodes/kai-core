@@ -21,7 +21,7 @@ class Sender:
 
         self.socket.connect(self.addr_outgoing)
         self._running = True
-        logger.info(f"ZMQ Sender started and connected to {self.addr_outgoing}")
+        logger.info(f"ZMQ Sender connected downstream to {self.addr_outgoing}")
 
     def stop(self) -> None:
         if not self._running:
@@ -39,7 +39,7 @@ class Sender:
         try:
             message_bytes = payload.model_dump_json().encode('utf-8')
             self.socket.send(message_bytes)
-            
+            logger.debug(f"Message sent successfully: {message_bytes}")
         except zmq.ZMQError as e:
             logger.error(f"ZMQ error during message transmission: {e}")
         except Exception as e:
