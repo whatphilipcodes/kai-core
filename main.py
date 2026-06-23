@@ -1,59 +1,57 @@
-import logging
+import time
+import sys
+from pydantic import ValidationError
+
 from src.kai_core.config import settings
-from src.kai_core.core.loop import MainLoop
-from src.kai_core.input.audio_buffer import AudioBuffer
-from src.kai_core.input.video_buffer import VideoBuffer
-from src.kai_core.memory.context import ContextManager
-from src.kai_core.agent.llm_client import LLMAgent
+from src.kai_core.io.sender import Sender
+from src.kai_core.io.receiver import Receiver
+from src.kai_core.utils.logger import get_logger
+from src.kai_core.schemata.ipc import DataReceive
 
-# Dynamically resolve log level from configuration string
-numeric_level = getattr(logging, settings.system.log_level.upper(), logging.INFO)
-logging.basicConfig(
-    level=numeric_level, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logger = get_logger(__name__)
 
+def callback_test(item: DataReceive) -> None:
+    print(f"\n[RECEIVER] Payload received: {item.model_dump()}\n> ", end="")
 
 def main() -> None:
-    logging.info(
-        f"Initializing Kai Core System with log level: {settings.system.log_level.upper()}..."
+    logger.info(
+        f"Initializing Kai Core System with log level: {settings.system.log_level}."
     )
 
-    audio_buffer = AudioBuffer(
-        rate=settings.audio.rate,
-        channels=settings.audio.channels,
-        chunk_size=settings.audio.chunk_size,
-    )
-    video_buffer = VideoBuffer(
-        camera_index=settings.video.camera_index, fps=settings.video.fps
-    )
+    receiver = Receiver()
+    receiver.register_callback(callback_test)
+    receiver.start()
 
-    context_manager = ContextManager(
-        max_history_length=settings.memory.max_history_length
-    )
-    llm_agent = LLMAgent(
-        base_url=settings.llm.base_url,
-        api_key=settings.llm.api_key,
-        model_id=settings.llm.model_id,
-    )
+    sender = Sender()
+    sender.start()
 
-    loop = MainLoop(
-        tick_interval=settings.system.tick_interval,
-        audio_buffer=audio_buffer,
-        video_buffer=video_buffer,
-        context_manager=context_manager,
-        agent=llm_agent,
-    )
+    time.sleep(0.1)
+
+    print("\n--- ZMQ Interactive Test ---")
+    print("Type a message to send.\n")
 
     try:
-        audio_buffer.start()
-        video_buffer.start()
-        loop.run()
-    except KeyboardInterrupt:
-        logging.info("Shutdown initiated via console.")
-    finally:
-        audio_buffer.stop()
-        video_buffer.stop()
+        while True:
+            user_input = input("> ")
+                
+            if not user_input.strip():
+                continue
 
+            try:
+                payload = DataReceive(message=user_input)
+                sender.send(payload)
+                
+            except ValidationError as e:
+                logger.error(f"Input does not match DataReceive schema: {e}")
+            except Exception as e:
+                logger.error(f"Failed to send message: {e}")
+
+    except KeyboardInterrupt:
+        print("\nProcess interrupted by user.")
+    finally:
+        sender.stop()
+        receiver.stop()
+        logger.info("System shutdown complete.")
 
 if __name__ == "__main__":
     main()

@@ -1,45 +1,22 @@
 from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings
+from ipaddress import IPv4Address
 
+from src.kai_core.utils.custom_types import LogLevel, NetworkProtocol
 
 class SystemConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    tick_interval: float = 3.0  # Time in seconds between model queries
-    log_level: str = "INFO"  # Choose between INFO, WARNING, ERROR, DEBUG
+    log_level: LogLevel = LogLevel.DEBUG
 
-
-class LLMConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    base_url: str = "http://localhost:30000/v1"
-    api_key: str = "EMPTY"
-    model_id: str = "google/gemma-4-E4B-it"
-
-
-class AudioConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    rate: int = 16000
-    channels: int = 1
-    chunk_size: int = 1024
-
-
-class VideoConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    camera_index: int = 0
-    fps: int = 15
-
-
-class MemoryConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    max_history_length: int = 20
-
+class NetworkConfig(BaseModel):
+    protocol: NetworkProtocol = NetworkProtocol.TCP
+    host_in: IPv4Address = IPv4Address("100.110.102.87") # ctech workstation -> speaker
+    host_out: IPv4Address = IPv4Address("100.89.160.118") # alienware laptop -> llm
+    port_in: int = 5554
+    port_out: int = 5555
 
 class GlobalConfig(BaseSettings):
     model_config = ConfigDict(frozen=True)
     system: SystemConfig = SystemConfig()
-    llm: LLMConfig = LLMConfig()
-    audio: AudioConfig = AudioConfig()
-    video: VideoConfig = VideoConfig()
-    memory: MemoryConfig = MemoryConfig()
-
+    network: NetworkConfig = NetworkConfig()
 
 settings = GlobalConfig()
