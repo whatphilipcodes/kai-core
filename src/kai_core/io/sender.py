@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 
 class Sender:
     def __init__(self):
-        self.addr_outgoing = f"{settings.network.protocol.value}{settings.network.host_out}:{settings.network.port_out}"
+        self.addr_outgoing = f"{settings.network.protocol.value}{settings.network.host_target}:{settings.network.port_target}"
         self.context = zmq.Context.instance()
         
         self.socket = self.context.socket(zmq.PUSH)

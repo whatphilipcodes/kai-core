@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 class Receiver:
     def __init__(self):
-        self.addr_incoming = f"{settings.network.protocol.value}{settings.network.host_in}:{settings.network.port_in}"
+        self.addr_incoming = f"{settings.network.protocol.value}{settings.network.host_incoming}:{settings.network.port_incoming}"
         self.context = zmq.Context.instance()
         
         self.socket = self.context.socket(zmq.PULL)
